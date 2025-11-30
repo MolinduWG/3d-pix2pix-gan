@@ -109,6 +109,7 @@ class MedicalImageAnimator(object):
             animate.save(
                 save_dir, writer='imagemagick', fps=15
             )
+            plt.close(self.fig)
         else:
             plt.show()
         return animate
