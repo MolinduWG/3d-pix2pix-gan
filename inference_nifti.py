@@ -33,13 +33,10 @@ def run_inference():
         model.test()
         visuals = model.get_current_visuals()
         
-        # Get output
-        fake_B = visuals['fake_B'] # This is (D, H, W) numpy array from tensor2im3d
+        fake_B = visuals['fake_B']
         
-        # Get metadata
         path = data['A_paths'][0]
         coord_str = data['coord'][0]
-        # Parse coord string back to tuple
         coord = eval(coord_str)
         
         if path not in reconstruction_buffer:
@@ -47,7 +44,6 @@ def run_inference():
             
         reconstruction_buffer[path].append((fake_B, coord))
         
-    # Reconstruct and save
     print("Reconstructing volumes...")
     
     save_dir = os.path.join(opt.results_dir, opt.name, '%s_%s' % (opt.phase, opt.which_epoch))
@@ -58,23 +54,16 @@ def run_inference():
         patches = [p[0] for p in patches_data]
         coords = [p[1] for p in patches_data]
         
-        # We need original shape and affine. Load header again.
         _, affine = nifti_utils.load_nifti(path)
         
-        # Infer shape from patches and coords? 
-        # Or just load it. We loaded it in dataset, but didn't pass it through.
-        # Let's just load it again, it's fast.
         import nibabel as nib
         img = nib.load(path)
         shape = img.shape
         
-        # Stitch
-        # Note: patch_size is needed. We can infer it from the first patch.
         patch_size = patches[0].shape
         
         reconstructed_volume = nifti_utils.stitch_volume(patches, coords, shape, patch_size)
         
-        # Save
         filename = os.path.basename(path)
         save_path = os.path.join(save_dir, filename)
         nifti_utils.save_nifti(reconstructed_volume, save_path, affine)

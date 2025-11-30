@@ -16,18 +16,14 @@ class NiftiDataset(BaseDataset):
         
         # Get all high-res files
         self.high_res_paths = self.make_dataset(self.dir_high_res)
-        self.dir_A = os.path.join(opt.dataroot, 'High-Res') # Renamed from dir_high_res
-        self.dir_B = os.path.join(opt.dataroot, 'Low-Res')  # Renamed from dir_low_res
+        self.dir_A = os.path.join(opt.dataroot, 'High-Res')
+        self.dir_B = os.path.join(opt.dataroot, 'Low-Res')
         
-        # Patch configuration
         self.patch_size = (opt.depthSize, opt.fineSize, opt.fineSize)
-        # Default stride to patch size (non-overlapping)
         self.stride = self.patch_size 
         
-        # Get high-res files
         all_high_res_files = sorted(self.make_dataset(self.dir_A))
         
-        # 90% train, 10% val split
         random.seed(42)
         random.shuffle(all_high_res_files)
         
@@ -47,26 +43,22 @@ class NiftiDataset(BaseDataset):
             if os.path.exists(low_res_path):
                 self.B_paths.append(low_res_path)
             else:
-                print(f"Warning: Low-res file missing for {filename}")
+                print(f"Warning: Corresponding low-res file not found for {filename}")
         
         self.A_paths = sorted(self.A_paths)
         self.B_paths = sorted(self.B_paths)
         self.A_size = len(self.A_paths)
         self.B_size = len(self.B_paths)
         
-        # Pre-calculate all patches
         self.patches = []
         
-        # Iterate through the A_paths (high-res files for the current phase)
         for i, path_high_res in enumerate(self.A_paths):
-            path_low_res = self.B_paths[i] # Get corresponding low-res path from B_paths
+            path_low_res = self.B_paths[i]
             
-            # Check if low-res file exists (already done above, but good for safety)
             if not os.path.exists(path_low_res):
                 print(f"Warning: Low-res file not found for {os.path.basename(path_high_res)}, skipping...")
                 continue
             
-            # Load header to get shape
             try:
                 import nibabel as nib
                 img = nib.load(path_high_res)
@@ -100,16 +92,12 @@ class NiftiDataset(BaseDataset):
     def __getitem__(self, index):
         patch_info = self.patches[index]
         
-        # Load volumes (this is inefficient if we reload for every patch, but OS cache helps)
-        # A is the input (low-res), B is the target (high-res)
         low_res_data, _ = nifti_utils.load_nifti(patch_info['low_res_path'])
         high_res_data, _ = nifti_utils.load_nifti(patch_info['high_res_path'])
         
         low_res_patch = nifti_utils.extract_patch(low_res_data, patch_info['coord'], self.patch_size)
         high_res_patch = nifti_utils.extract_patch(high_res_data, patch_info['coord'], self.patch_size)
         
-        # Convert to tensors
-        # Add channel dimension [1, D, H, W]
         A_tensor = torch.from_numpy(low_res_patch).float().unsqueeze(0)
         B_tensor = torch.from_numpy(high_res_patch).float().unsqueeze(0)
         
