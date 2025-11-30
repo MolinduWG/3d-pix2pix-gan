@@ -1,6 +1,6 @@
 #!/bin/bash
-# Training script for Kaggle NIfTI dataset
-# Runs on Kaggle with dataset at /kaggle/input/high-res-and-low-res-mri/Refined-MRI-dataset
+# Validation script for Kaggle NIfTI dataset
+# Runs validation on the 10% held-out data
 
 python3 train.py \
   --dataroot /kaggle/input/high-res-and-low-res-mri/Refined-MRI-dataset \
@@ -12,14 +12,10 @@ python3 train.py \
   --depthSize 64 \
   --fineSize 64 \
   --batchSize 1 \
-  --niter 5 \
-  --niter_decay 5 \
   --gpu_ids 0 \
-  --display_freq 10 \
-  --print_freq 10 \
-  --save_epoch_freq 5 \
   --which_model_netG unet_128 \
   --display_id 0 \
   --no_html \
-  --phase train
-
+  --phase val \
+  --which_epoch latest \
+  --continue_train
