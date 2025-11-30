@@ -3,6 +3,7 @@ from data.base_dataset import BaseDataset
 from util import nifti_utils
 import torch
 import numpy as np
+import random
 
 class NiftiDataset(BaseDataset):
     def initialize(self, opt):
