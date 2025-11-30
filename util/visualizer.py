@@ -76,9 +76,12 @@ class Visualizer():
         if self.use_html: # save images to a html file
             for label, image_numpy in visuals.items():
                 if len(image_numpy.shape) == 4:
-                    img_path = os.path.join(self.img_dir, 'epoch%.3d_%s.gif' % (epoch, label))
-                    animator = MedicalImageAnimator(image_numpy[0], [], 0, save=True)
-                    animate = animator.run(img_path)
+                    try:
+                        img_path = os.path.join(self.img_dir, 'epoch%.3d_%s.gif' % (epoch, label))
+                        animator = MedicalImageAnimator(image_numpy[0], [], 0, save=True)
+                        animate = animator.run(img_path)
+                    except Exception as e:
+                        print(f"Error creating animation for {label}: {e}")
                 else:
                     img_path = os.path.join(self.img_dir, 'epoch%.3d_%s.png' % (epoch, label))
                     util.save_image(image_numpy, img_path)
