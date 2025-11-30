@@ -4,9 +4,7 @@ from torch.nn import init
 import functools
 from torch.autograd import Variable
 import numpy as np
-###############################################################################
-# Functions
-###############################################################################
+
 
 
 def weights_init(m):
@@ -79,15 +77,10 @@ def print_network(net):
     print('Total number of parameters: %d' % num_params)
 
 
-##############################################################################
-# Classes
-##############################################################################
 
 
-# Defines the GAN loss which uses either LSGAN or the regular GAN.
-# When LSGAN is used, it is basically same as MSELoss,
-# but it abstracts away the need to create the target label tensor
-# that has the same size as the input
+
+# GAN loss: LSGAN (MSE) or vanilla GAN (BCE)
 class GANLoss(nn.Module):
     def __init__(self, use_lsgan=True, target_real_label=1.0, target_fake_label=0.0,
                  tensor=torch.FloatTensor):
@@ -125,20 +118,16 @@ class GANLoss(nn.Module):
         return self.loss(input, target_tensor)
 
     
-# Defines the Unet generator.
-# |num_downs|: number of downsamplings in UNet. For example,
-# if |num_downs| == 7, image of size 128x128 will become of size 1x1
-# at the bottleneck
+# 2D UNet generator
 class UnetGenerator(nn.Module):
     def __init__(self, input_nc, output_nc, num_downs, ngf=64,
                  norm_layer=nn.BatchNorm3d, use_dropout=False, gpu_ids=[]):
         super(UnetGenerator, self).__init__()
         self.gpu_ids = gpu_ids
 
-        # currently support only input_nc == output_nc
         assert(input_nc == output_nc)
 
-        # construct unet structure
+
         unet_block = UnetSkipConnectionBlock3d(ngf * 8, ngf * 8, norm_layer=norm_layer, innermost=True)
         for i in range(num_downs - 5):
             unet_block = UnetSkipConnectionBlock3d(ngf * 8, ngf * 8, unet_block, norm_layer=norm_layer, use_dropout=use_dropout)
@@ -155,25 +144,21 @@ class UnetGenerator(nn.Module):
         else:
             return self.model(input)
 
-#############################
-#
-# 3D version of UnetGenerator
+# 3D UNet generator
 class UnetGenerator3d(nn.Module):
     def __init__(self, input_nc, output_nc, num_downs, ngf=64,
-                 norm_layer=nn.BatchNorm3d, use_dropout=False, gpu_ids=[]): # TODO
+                 norm_layer=nn.BatchNorm3d, use_dropout=False, gpu_ids=[]):
         super(UnetGenerator3d, self).__init__()
         self.gpu_ids = gpu_ids
 
-        # currently support only input_nc == output_nc
         assert(input_nc == output_nc)
 
-        # construct unet structure
-        unet_block = UnetSkipConnectionBlock3d(ngf * 8, ngf * 8, norm_layer=norm_layer, innermost=True) 
+        unet_block = UnetSkipConnectionBlock3d(ngf * 8, ngf * 8, norm_layer=norm_layer, innermost=True)
         for i in range(num_downs - 5):
-            unet_block = UnetSkipConnectionBlock3d(ngf * 8, ngf * 8, unet_block, norm_layer=norm_layer, use_dropout=use_dropout) 
-        unet_block = UnetSkipConnectionBlock3d(ngf * 4, ngf * 8, unet_block, norm_layer=norm_layer) 
-        unet_block = UnetSkipConnectionBlock3d(ngf * 2, ngf * 4, unet_block, norm_layer=norm_layer) 
-        unet_block = UnetSkipConnectionBlock3d(ngf, ngf * 2, unet_block, norm_layer=norm_layer) 
+            unet_block = UnetSkipConnectionBlock3d(ngf * 8, ngf * 8, unet_block, norm_layer=norm_layer, use_dropout=use_dropout)
+        unet_block = UnetSkipConnectionBlock3d(ngf * 4, ngf * 8, unet_block, norm_layer=norm_layer)
+        unet_block = UnetSkipConnectionBlock3d(ngf * 2, ngf * 4, unet_block, norm_layer=norm_layer)
+        unet_block = UnetSkipConnectionBlock3d(ngf, ngf * 2, unet_block, norm_layer=norm_layer)
         unet_block = UnetSkipConnectionBlock3d(output_nc, ngf, unet_block, outermost=True, norm_layer=norm_layer)
 
         self.model = unet_block
@@ -184,9 +169,7 @@ class UnetGenerator3d(nn.Module):
         else:
             return self.model(input)
 
-# Defines the submodule with skip connection.
-# X -------------------identity---------------------- X
-#   |-- downsampling -- |submodule| -- upsampling --|
+# UNet block with skip connection
 class UnetSkipConnectionBlock3d(nn.Module):
     def __init__(self, outer_nc, inner_nc,
                  submodule=None, outermost=False, innermost=False, norm_layer=nn.BatchNorm3d, use_dropout=False):
@@ -238,20 +221,20 @@ class UnetSkipConnectionBlock3d(nn.Module):
         else:
             return torch.cat([self.model(x), x], 1)
 
-# Defines the PatchGAN discriminator with the specified arguments.
+# PatchGAN discriminator
 class NLayerDiscriminator(nn.Module):
     def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm3d, use_sigmoid=False, gpu_ids=[]):
         super(NLayerDiscriminator, self).__init__()
         self.gpu_ids = gpu_ids
         if type(norm_layer) == functools.partial:
-            use_bias = norm_layer.func == nn.InstanceNorm3d 
+            use_bias = norm_layer.func == nn.InstanceNorm3d
         else:
             use_bias = norm_layer == nn.InstanceNorm3d
 
         kw = 4
         padw = int(np.ceil((kw-1)/2))
         sequence = [
-            nn.Conv3d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw), 
+            nn.Conv3d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw),
             nn.LeakyReLU(0.2, True)
         ]
 
