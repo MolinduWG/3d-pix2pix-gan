@@ -24,11 +24,11 @@ class NiftiDataset(BaseDataset):
         # Default stride to patch size (non-overlapping)
         self.stride = self.patch_size 
         
-        # Get all high-res files
-        all_high_res_files = sorted(self.make_dataset(self.dir_A)) # Changed to self.make_dataset and dir_A
+        # Get high-res files
+        all_high_res_files = sorted(self.make_dataset(self.dir_A))
         
-        # Deterministic split: 90% train, 10% val
-        random.seed(42) # Fixed seed for reproducibility
+        # 90% train, 10% val split
+        random.seed(42)
         random.shuffle(all_high_res_files)
         
         split_idx = int(len(all_high_res_files) * 0.9)
@@ -37,17 +37,17 @@ class NiftiDataset(BaseDataset):
         elif opt.phase == 'val':
             self.A_paths = all_high_res_files[split_idx:]
         else:
-            self.A_paths = all_high_res_files # Use all for test/other phases
+            self.A_paths = all_high_res_files
             
         self.B_paths = []
         for path in self.A_paths:
             filename = os.path.basename(path)
             low_res_filename = 'lowres_' + filename
-            low_res_path = os.path.join(self.dir_B, low_res_filename) # Changed to dir_B
+            low_res_path = os.path.join(self.dir_B, low_res_filename)
             if os.path.exists(low_res_path):
                 self.B_paths.append(low_res_path)
             else:
-                print(f"Warning: Corresponding low-res file not found for {filename}")
+                print(f"Warning: Low-res file missing for {filename}")
         
         self.A_paths = sorted(self.A_paths)
         self.B_paths = sorted(self.B_paths)
