@@ -16,25 +16,54 @@ class NiftiDataset(BaseDataset):
         
         # Get all high-res files
         self.high_res_paths = self.make_dataset(self.dir_high_res)
-        self.high_res_paths = sorted(self.high_res_paths)
+        self.dir_A = os.path.join(opt.dataroot, 'High-Res') # Renamed from dir_high_res
+        self.dir_B = os.path.join(opt.dataroot, 'Low-Res')  # Renamed from dir_low_res
         
         # Patch configuration
         self.patch_size = (opt.depthSize, opt.fineSize, opt.fineSize)
         # Default stride to patch size (non-overlapping)
         self.stride = self.patch_size 
         
+        # Get all high-res files
+        all_high_res_files = sorted(self.make_dataset(self.dir_A)) # Changed to self.make_dataset and dir_A
+        
+        # Deterministic split: 90% train, 10% val
+        random.seed(42) # Fixed seed for reproducibility
+        random.shuffle(all_high_res_files)
+        
+        split_idx = int(len(all_high_res_files) * 0.9)
+        if opt.phase == 'train':
+            self.A_paths = all_high_res_files[:split_idx]
+        elif opt.phase == 'val':
+            self.A_paths = all_high_res_files[split_idx:]
+        else:
+            self.A_paths = all_high_res_files # Use all for test/other phases
+            
+        self.B_paths = []
+        for path in self.A_paths:
+            filename = os.path.basename(path)
+            low_res_filename = 'lowres_' + filename
+            low_res_path = os.path.join(self.dir_B, low_res_filename) # Changed to dir_B
+            if os.path.exists(low_res_path):
+                self.B_paths.append(low_res_path)
+            else:
+                print(f"Warning: Corresponding low-res file not found for {filename}")
+        
+        self.A_paths = sorted(self.A_paths)
+        self.B_paths = sorted(self.B_paths)
+        self.A_size = len(self.A_paths)
+        self.B_size = len(self.B_paths)
+        
         # Pre-calculate all patches
         self.patches = []
         
-        for path_high_res in self.high_res_paths:
-            # Get corresponding low-res file
-            filename = os.path.basename(path_high_res)
-            low_res_filename = 'lowres_' + filename
-            path_low_res = os.path.join(self.dir_low_res, low_res_filename)
+        # Iterate through the A_paths (high-res files for the current phase)
+        for i, path_high_res in enumerate(self.A_paths):
+            path_low_res = self.B_paths[i] # Get corresponding low-res path from B_paths
             
-            # Check if low-res file exists
+            # Check if low-res file exists (already done above, but good for safety)
             if not os.path.exists(path_low_res):
-                print(f"Warning: Low-res file not found for {filename}, skipping...")
+                print(f"Warning: Low-res file not found for {os.path.basename(path_high_res)}, skipping...")
                 continue
             
             # Load header to get shape
