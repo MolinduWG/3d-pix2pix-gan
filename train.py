@@ -62,6 +62,65 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
             img_path = os.path.join(save_result_dir, '%s.png' % label)
             util.save_image(image_numpy, img_path)
 
-# Save final model
 print('saving the final model')
 model.save('final')
+
+# Generate and save loss plots
+print('generating loss plots...')
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import re
+
+log_file = os.path.join(opt.checkpoints_dir, opt.name, 'loss_log.txt')
+if os.path.exists(log_file):
+    epochs = []
+    g_gan_losses = []
+    g_l1_losses = []
+    d_real_losses = []
+    d_fake_losses = []
+    
+    with open(log_file, 'r') as f:
+        for line in f:
+            if line.startswith('(epoch:'):
+                match = re.search(r'epoch: (\d+).*G_GAN: ([\d.]+).*G_L1: ([\d.]+).*D_Real: ([\d.]+).*D_Fake: ([\d.]+)', line)
+                if match:
+                    epochs.append(int(match.group(1)))
+                    g_gan_losses.append(float(match.group(2)))
+                    g_l1_losses.append(float(match.group(3)))
+                    d_real_losses.append(float(match.group(4)))
+                    d_fake_losses.append(float(match.group(5)))
+    
+    if epochs:
+        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+        
+        axes[0, 0].plot(epochs, g_gan_losses, 'b-', alpha=0.7)
+        axes[0, 0].set_title('Generator GAN Loss')
+        axes[0, 0].set_xlabel('Iteration')
+        axes[0, 0].set_ylabel('Loss')
+        axes[0, 0].grid(True, alpha=0.3)
+        
+        axes[0, 1].plot(epochs, g_l1_losses, 'g-', alpha=0.7)
+        axes[0, 1].set_title('Generator L1 Loss')
+        axes[0, 1].set_xlabel('Iteration')
+        axes[0, 1].set_ylabel('Loss')
+        axes[0, 1].grid(True, alpha=0.3)
+        
+        axes[1, 0].plot(epochs, d_real_losses, 'r-', alpha=0.7)
+        axes[1, 0].set_title('Discriminator Real Loss')
+        axes[1, 0].set_xlabel('Iteration')
+        axes[1, 0].set_ylabel('Loss')
+        axes[1, 0].grid(True, alpha=0.3)
+        
+        axes[1, 1].plot(epochs, d_fake_losses, 'orange', alpha=0.7)
+        axes[1, 1].set_title('Discriminator Fake Loss')
+        axes[1, 1].set_xlabel('Iteration')
+        axes[1, 1].set_ylabel('Loss')
+        axes[1, 1].grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plot_path = os.path.join(opt.checkpoints_dir, opt.name, 'loss_plots.png')
+        plt.savefig(plot_path, dpi=150)
+        plt.close()
+        print(f'Loss plots saved to {plot_path}')
+
