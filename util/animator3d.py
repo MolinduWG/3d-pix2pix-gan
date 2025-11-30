@@ -107,7 +107,7 @@ class MedicalImageAnimator(object):
         )
         if self.save:
             animate.save(
-                save_dir, writer='imagemagick', fps=15
+                save_dir, writer='pillow', fps=15
             )
             plt.close(self.fig)
         else:
